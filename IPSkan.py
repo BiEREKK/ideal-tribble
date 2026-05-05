@@ -15,7 +15,7 @@ def ping(ip):
     return os.system(f"ping -c 1 -w 1 {ip} > /dev/null 2>&1") == 0
 
 net = get_network()
-print ("Skanowanie: {net}\n")
+print (f"Skanowanie: {net}\n")
 
 for ip in net.hosts():
     ip = str(ip)
