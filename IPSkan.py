@@ -21,3 +21,4 @@ for ip in net.hosts():
     ip = str(ip)
     if ping(ip):
         print(ip)
+        print(5 * ".")
