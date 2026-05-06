@@ -1,59 +1,46 @@
-import argparse, subprocess, ipaddress, socket, platform, sys
+import subprocess
+import argparse
+import ipaddress
+import socket
+import platform
+import sys
 
-def get_network():
+def get_network(): 
     try:
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-            s.connect(("8.8.8.8", 80))
-            return str(ipaddress.IPv4Interface(f"{s.getsockname()[0]}/24").network)
-    except:
-        return "192.168.0.0/24"
-
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+        network = ipaddress.ip_network(f"{local_ip}/24", strict=False)
+        return str(network.network_address) + "/24"
+    except Exception:
+        return"127.0.0.1/24"
+    
+    network = ipaddress.ip_network(f"{local_ip}/24", strict=False)
+    return str(network.network_address) + "/24"
 def ping_host(ip):
-    sys_name = platform.system().lower()
-    if sys_name == 'windows':
-        cmd = ['ping', '-n', '1', '-w', '1000', str(ip)]
-    else:
-        cmd = ['ping', '-c', '1', '-W', '1', str(ip)]
-    
+    param = '-n' if platform.system().lower() == 'windows' else '-c'
+    command = ['ping', param, '1', '-w', '1000', str(ip)]
     try:
-        return subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+        result = subprocess.run(
+            command,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        return resoult.returncode == 0
     except FileNotFoundError:
-        print("Błąd: Brak programu ping.")
+        print("Blad: program 'ping' nie zostal znaleziony w systemie.")
         sys.exit(1)
-
-def scan_network(network):
+def scan_network(network_str):
     try:
-        net = ipaddress.IPv4Network(network, strict=False)
-        return [str(ip) for ip in net.hosts()]
-    except ValueError:
-        print(f"Błąd: Niepoprawny format sieci: {network}")
+        net = ipaddress.ip_network(network_str, strict=False)
+    except ValueError as e:
+        print(f"Blad: niepoprawny format sieci: {e}")
         sys.exit(1)
+    print(f"Skanowanie sieci: {network_str}...")
+    active_hosts = []
+    for ip in net.hosts():
+        if ping_host(ip):
+            active_hosts.append(str(ip))
 
-def print_results(results, network, output_file):
-    active = [ip for ip in results if ping_host(ip)]
-    out = f"Skanowana siec: {network}\nAktywne hosty:\n"
-    out += "\n".join(f"{i}. {ip}" for i, ip in enumerate(active, 1)) if active else "Brak aktywnych hostów."
-    
-    print(out)
-    if output_file:
-        try:
-            with open(output_file, 'w') as f: f.write(out + "\n")
-        except Exception as e: print(f"Błąd zapisu: {e}")
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--network")
-    parser.add_argument("--output")
-    args = parser.parse_args()
-
-    try:
-        net = args.network or get_network()
-        print(f"Skanowanie {net}...")
-        print_results(scan_network(net), net, args.output)
-    except KeyboardInterrupt:
-        sys.exit(0)
-    except Exception as e:
-        print(f"Błąd: {e}")
-
-if __name__ == "__main__":
-    main()
+    return active_hosts
