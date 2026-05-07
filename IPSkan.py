@@ -27,7 +27,7 @@ def ping_host(ip):
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
         )
-        return resoult.returncode == 0
+        return result.returncode == 0
     except FileNotFoundError:
         print("Blad: program 'ping' nie zostal znaleziony w systemie.")
         sys.exit(1)
@@ -41,6 +41,57 @@ def scan_network(network_str):
     active_hosts = []
     for ip in net.hosts():
         if ping_host(ip):
-            active_hosts.append(str(ip))
+            active_hosts.append(str(ip)) 
 
     return active_hosts
+def print_results(network_str, active_hosts, output_file=None):
+    output_lines = []
+    output_lines.append(f"Skanowanie sieci: {network_str}")
+    output_lines.append(f"Aktywne hosty:")
+
+    if not active_hosts:
+        output_lines.append("Brak aktywnych hostow w sieci.")
+    else:
+        for i, host in enumerate(active_hosts, 1):
+            output_lines.append(f"{i}. {host}")
+    output_text = "\n".join(output_lines)
+    print("\n" + output_text)
+    if output_file:
+        try:
+            with open(output_file, 'w', encoding='utf-8') as f:
+                f.write(output_text + "\n")
+            print(f"\nWyniki zostaly zapisane do pliky: {output_file}")
+        except Exception as e:
+            print(f"\nBlad podczas zapisywania do pliku: {e}")
+def main():
+    parser = argparse.ArgumentParser(description="Skaner Sieci IP - IP Scanner")
+    parser.add_argument(
+        '--network',
+        type=str,
+        help="Zakres sieci do przeskanowania, np. 192,168.0.0/24.(Domyslnie: Wykrycie Sieci Automatycznie)"
+    )
+    parser.add_argument(
+        '--output',
+        type=str,
+        help="Sciezka do pliku, w ktorym zostana zapisane wyniki skanowania"
+    )
+    args = parser.parse_args()
+
+    if args.network:
+        network_to_scan = args.network
+    else:
+        print("Nie podano opcji --network. Rozpoczynam automatyczne wykrywanie sieci...")
+        network_to_scan = get_network()
+        print(f"Wykryta siec domyslna: {network_to_scan}")
+    
+    try:
+        active_hosts = scan_network(network_to_scan)
+        print_results(network_to_scan, active_hosts, args.output)
+    except KeyboardInterrupt:
+        print("\nSkanowanie przerwane przez uzytkownika.")
+        sys.exit(0)
+    except Exception as e:
+        print(f"\nWystopil nieoczekiwany blad: {e}")
+        sys.exit(1)
+if __name__ == "__main__":
+    main()
